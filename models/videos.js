@@ -6,7 +6,7 @@ var Schema = mongoose.Schema;
 const VideoSchema = Schema ({
     id: Number,
     description:  String,
-    yeary: Number,
+    year: Number,
     staring: String,
     director: String,
     url: String,
@@ -14,7 +14,7 @@ const VideoSchema = Schema ({
 		{
 		  label: String,
 		  languaje: String,
-	      src: String,
+	    src: String,
 		  kind: String,
 		  default: String,
 		}

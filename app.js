@@ -1,5 +1,6 @@
 var express = require('express');
 var fs = require("fs");
+var download = require('download');
 var path = require("path");
 var url = require('url');
 var CronJob = require('cron').CronJob;
@@ -9,6 +10,9 @@ var mongoose = require('mongoose');
 var firebase = require('firebase');
 var Video = require('./models/videos');
 
+var _downloadingFile = false;
+
+// Configuracion de Firebase
 var config = {
     apiKey: "AIzaSyBohaAcF-MQXR8gdSHV2iZWwI5NdYpFRio",
     authDomain: "mediaplay-44a81.firebaseapp.com",
@@ -19,6 +23,7 @@ var config = {
   };
   firebase.initializeApp(config);
 
+// Inicializacion de Express
 var app = express();
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -28,8 +33,8 @@ app.use(function(req, res, next) {
 //app.use(express.static('/media/pi/UUI/public'));
 app.use(express.static('./'));
 
+// Conexion a la BD y a NodeJs
 mongoose.Promise = global.Promise;
-
 mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', {useMongoClient:true})
     .then(() => {
         console.log("Mongoo DB conectada correctamente");
@@ -109,6 +114,7 @@ function doWait(seconds) {
   while(waitTill > new Date()){}
 }
 
+// Permite obtener la lista de videos desde la BD
 app.get('/getResources', function(req,res, next){
     Video.find({}, (err, videos) => {
         if(err) return res.status(500).send({message:"Error al obtener todos los videos: " + err});
@@ -116,6 +122,113 @@ app.get('/getResources', function(req,res, next){
         res.status(200).send({videos});
     });
 });
+
+// Permite obtener la lista de videos desde la BD
+app.get('/test', function(req,res, next){
+    if(!_downloadingFile) {
+        syncToCloud();
+    }
+});
+
+function syncToCloud() {
+    // Obtenemos el json de videos desde Firebase
+    firebase.database().ref('/videos').once('value').then(function(snapshot) {
+        var videosFirebase = snapshot.val();  
+
+        for (var i in videosFirebase) {
+
+            // Freno el for si se esta descargando un video
+            if(!_downloadingFile) {
+
+                // Buscamos el video por id en la bd
+                Video.findOne({ id: videosFirebase[i].id }, (err, video) => {
+                    if(err) return;
+
+                    // Esta en la BD de la base
+                    if(video != null) {
+                        // TODO verificar si hay que actualizarlo. Usar algun campo metadata-version.
+                    }
+                    // No esta en la BD de la base
+                    else {
+                        syncInsert(videosFirebase[i]);
+                    }
+                });
+            }
+        }
+    });
+}
+
+function syncInsert(value) {
+    
+    // Descargamos los subtitulos
+    for(var i in value.caption) {
+        downloadFromCloud(value.caption[i].urlCloud, './');
+    }
+
+    // Descargamos la imagen
+    downloadFromCloud(value.image.urlCloud, './');
+
+    // Parseamos el objeto, descargamos el video y registramos en la bd
+    _downloadingFile = true;
+    var video = parserToObject(value);
+    downloadFromCloud(value.video.urlCloud, './', video);
+}
+
+function downloadFromCloud(url, path, video) {
+    download(url, path)
+        .then(() => {
+
+            // Si es descarga de video, al finalizar tiene que registrarlo en la bd
+            if(video) {
+                video.save((err, stored) => {
+                    if(err){
+                        console.log("Error insertando registro en bd: " + err);
+                    }
+                    else {
+                        console.log("Registro insertado en bd: " + stored);
+                    }
+                });
+
+                _downloadingFile = false;
+                syncToCloud();
+            }
+            
+            console.log("Termino la descarga");
+        })
+        .catch((err) => {
+            _downloadingFile = false;
+            syncToCloud();
+            console.log("Error en la descarga: " + err);
+        });
+}
+
+function parserToObject(value) {
+    var video = new Video();
+
+    video.id =  value.id;
+    video.description = value.description;
+    video.year = value.year;
+    video.staring = value.staring;
+    video.director = value.director;
+    video.url = value.video.url;	
+    video.clasification = value.clasification;
+    video.name = value.name;
+    video.duration = value.duration;
+    video.type = value.type;
+    video.image = value.image.url;
+
+    for (var i in value.caption) {
+        video.caption.push({
+            label: value.caption[i].label,
+            languaje: value.caption[i].languaje,
+            src: value.caption[i].src,
+            kind: value.caption[i].kind,
+            default: value.caption[i].default 
+        });
+    }
+
+    return video;
+}
 
 //Test BD
 app.get('/insert', function(req,res, next){
