@@ -11,6 +11,9 @@ var firebase = require('firebase');
 var Video = require('./models/videos');
 
 var _downloadingFile = false;
+var _pathCaption = './';
+var _pathImage = './';
+var _pathVideo = './';
 
 // Configuracion de Firebase
 var config = {
@@ -115,11 +118,11 @@ function doWait(seconds) {
 }
 
 // Permite obtener la lista de videos desde la BD
-app.get('/getResources', function(req,res, next){
+app.get('/syncToBase', function(req,res, next){
     Video.find({}, (err, videos) => {
         if(err) return res.status(500).send({message:"Error al obtener todos los videos: " + err});
 
-        res.status(200).send({videos});
+        res.status(200).send(videos);
     });
 });
 
@@ -133,45 +136,109 @@ app.get('/test', function(req,res, next){
 function syncToCloud() {
     // Obtenemos el json de videos desde Firebase
     firebase.database().ref('/videos').once('value').then(function(snapshot) {
-        var videosFirebase = snapshot.val();  
+        var videosFirebase = snapshot.val();
+        
+        // Obtenemos la lista de videos de la BD
+        Video.find({}, (err, videos) => {
+            if(err) return console.log("Error al obtener todos los videos syncToCloud: " + err);
+    
+            // Priorizamos eliminar videos de la BD
+            // Recorro la lista de videos de la bd para ver si hay alguno que no este en 
+            // la lista de videos de firebase
+            for(var i in videos) {
 
-        for (var i in videosFirebase) {
+                var keep = false;
 
-            // Freno el for si se esta descargando un video
-            if(!_downloadingFile) {
-
-                // Buscamos el video por id en la bd
-                Video.findOne({ id: videosFirebase[i].id }, (err, video) => {
-                    if(err) return;
-
-                    // Esta en la BD de la base
-                    if(video != null) {
-                        // TODO verificar si hay que actualizarlo. Usar algun campo metadata-version.
+                // Recorremos la lista de vidos de firebase
+                for(var x in videosFirebase) {
+                    // Si el video esta en firebase hay que mantenerlo, sino eliminarlo
+                    if(videos[i].id == videosFirebase[x].id) {
+                        keep = true;
                     }
-                    // No esta en la BD de la base
-                    else {
-                        syncInsert(videosFirebase[i]);
+                }
+
+                // Si no esta en firebase lo eliminamos
+                if(!keep) {
+                    // Primero borramos de la bd el registro
+                    Video.findOne({ id: videos[i].id }, (err, video) => {
+                        if(err) return console.log("Error al eliminar el video: " + err);
+                
+                        video.remove(err => {
+                            if(err) return console.log("Error al eliminar el video: " + err);
+                            
+                            console.log("El registro fue eliminado de la bd");
+                        })
+                    });
+
+                    // Borramos la imagen
+                    var imageDelete = videos[i].image;
+                    imageDelete = imageDelete.substring(imageDelete.lastIndexOf("/") + 1, imageDelete.lenght);
+                    deleteFile(_pathImage + imageDelete);
+
+                    // Borramos los subtitulos
+                    for(var x in videos[i].caption) {
+                        var captionDelete = videos[i].caption[x].src;
+                        if(captionDelete) {
+                            captionDelete = captionDelete.substring(captionDelete.lastIndexOf("/") + 1, captionDelete.lenght);
+                            deleteFile(_pathCaption + captionDelete);
+                        }
                     }
-                });
+
+                     // Borramos el video
+                     var videoDelete = videos[i].url;
+                     videoDelete = videoDelete.substring(videoDelete.lastIndexOf("=") + 1, videoDelete.lenght);
+                     deleteFile(_pathVideo + videoDelete);
+                }
             }
-        }
+
+            // Insertamos y actalizar la BD con respecto a firebase
+            for (var i in videosFirebase) {
+
+                // Freno el for si se esta descargando un video
+                if(!_downloadingFile) {
+
+                    // Buscamos el video por id en la bd
+                    Video.findOne({ id: videosFirebase[i].id }, (err, video) => {
+                        if(err) return;
+
+                        // Esta en la BD de la base
+                        if(video != null) {
+                            // TODO verificar si hay que actualizarlo. Usar algun campo metadata-version.
+                        }
+                        // No esta en la BD de la base
+                        else {
+                            syncInsert(videosFirebase[i]);
+                        }
+                    });
+                }
+            }
+        });
     });
+}
+
+function deleteFile(path) {
+    fs.unlink(path, function(err) {
+        if (err) {
+            return console.log("Error al eliminar el archivo: " + path + "-- Error: " + err);
+        }
+        console.log("Archivo eliminado: " + path);
+     });
 }
 
 function syncInsert(value) {
     
     // Descargamos los subtitulos
     for(var i in value.caption) {
-        downloadFromCloud(value.caption[i].urlCloud, './');
+        downloadFromCloud(value.caption[i].urlCloud, _pathCaption);
     }
 
     // Descargamos la imagen
-    downloadFromCloud(value.image.urlCloud, './');
+    downloadFromCloud(value.image.urlCloud, _pathImage);
 
     // Parseamos el objeto, descargamos el video y registramos en la bd
     _downloadingFile = true;
     var video = parserToObject(value);
-    downloadFromCloud(value.video.urlCloud, './', video);
+    downloadFromCloud(value.video.urlCloud, _pathVideo, video);
 }
 
 function downloadFromCloud(url, path, video) {
@@ -247,7 +314,7 @@ app.get('/insert', function(req,res, next){
 });
 
 app.get('/delete', function(req,res, next){
-    Video.findOne({ id: 1 }, (err, video) => {
+    Video.findOne({ id: 2 }, (err, video) => {
         if(err) return res.status(500).send({message:"Error al eliminar el video: " + err});
 
         video.remove(err => {
@@ -259,7 +326,7 @@ app.get('/delete', function(req,res, next){
 });
 
 app.get('/update', function(req,res, next){
-    Video.findOne({ id: 1 }, (err, video) => {
+    Video.findOne({ id: 2 }, (err, video) => {
         if(err) return res.status(500).send({message:"Error al actualizar el video: " + err});
 
         video.update({ name: "sadasd"}, err => {
