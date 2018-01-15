@@ -1,0 +1,17 @@
+{
+  "name": "mob-media-player-base",
+  "version": "1.0.0",
+  "description": "media app",
+  "main": "app.js",
+  "scripts": {
+    "run": "node app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.4",
+    "firebase": "^4.8.2",
+    "mongoose": "^4.13.9",
+    "pi-wifi": "^1.2.0"
+  }
+}
