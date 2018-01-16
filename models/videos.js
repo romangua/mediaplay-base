@@ -24,6 +24,9 @@ const VideoSchema = Schema ({
     duration: Number,
     type: String,
     image: String,
+    metadata: {
+      version: Number
+    }
 });
 
 module.exports = mongoose.model('Video', VideoSchema);
