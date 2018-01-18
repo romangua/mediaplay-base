@@ -9,12 +9,16 @@ const VideoSchema = Schema ({
     year: Number,
     staring: String,
     director: String,
-    url: String,
+    video: {
+      url: String,
+      urlBase: String
+    },
     caption: [
 		{
 		  label: String,
 		  languaje: String,
-	    src: String,
+      src: String,
+      urlBase: String,
 		  kind: String,
 		  default: String,
 		}
@@ -23,7 +27,10 @@ const VideoSchema = Schema ({
     name: String,
     duration: Number,
     type: String,
-    image: String,
+    image: {
+      url: String,
+      urlBase: String
+    },
     metadata: {
       version: Number
     }
