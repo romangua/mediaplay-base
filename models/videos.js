@@ -13,16 +13,29 @@ const VideoSchema = Schema ({
       url: String,
       urlBase: String
     },
-    caption: [
-		{
-		  label: String,
-		  languaje: String,
-      src: String,
-      urlBase: String,
-		  kind: String,
-		  default: String,
-		}
-	],	
+    caption: {
+      cap: [{
+          label: String,
+          url: String,
+          urlBase: String
+        }],
+      default: Number
+    },	
+    advertising: {
+      video : [{
+        start: String,
+        hold: Number,
+        url: String,
+        urlBase: String
+      }],
+      image: [{
+        start: String,
+        end: String,
+        hold: Number,
+        url: String,
+        urlBase: String
+      }]
+    } ,
     clasification: String,
     name: String,
     duration: Number,

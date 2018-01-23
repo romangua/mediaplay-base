@@ -1,3 +1,5 @@
+//import { request } from 'https';
+
 var express = require('express');
 var fs = require('fs');
 var download = require('download');
@@ -11,6 +13,7 @@ var _downloadingFile = false;
 var _pathCaption = './';
 var _pathImage = './';
 var _pathVideo = './';
+var _pathAdvertising = './';
 var _indexSync = 0;
 
 // Configuracion de Firebase
@@ -200,48 +203,47 @@ function deleteFile(path) {
     });
 }
 
-function syncInsert(registroFirebase) {
+async function syncInsert(registroFirebase) {
     try {
         console.log("-------------------------");
         console.log("Inicio de descarga del registro id: " + registroFirebase.id);
 
         // Primero descargamos el video 
-        download(registroFirebase.video.urlCloud, _pathVideo)
-        .then(() => {
-            console.log("Finalizo la descarga del video id: " + registroFirebase.id)
+        await download(registroFirebase.video.urlCloud, _pathVideo)
+        .then(console.log("Finalizo la descarga del video id: " + registroFirebase.id))
 
-            // Descargamos la imagen
-            download(registroFirebase.image.urlCloud, _pathImage)
-            .then(() => {
-                console.log("Finalizo la descarga de la imagen id: " + registroFirebase.id)
+        // Descargamos la imagen
+        await download(registroFirebase.image.urlCloud, _pathImage)
+        .then(console.log("Finalizo la descarga de la imagen id: " + registroFirebase.id))
 
-                // Descargamos los subtitulos. TODO-Se puede descargar hasta 2 por ahora.
-                var lenght = getLenghtArray(registroFirebase.caption);
-                if (lenght > 0) {
-                    var index = 0;
-                    download(registroFirebase.caption[index].urlCloud, _pathCaption)
-                    .then(() => {
-                        console.log("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + index);
-
-                        index++;
-                        if (index == lenght) {
-                            insertInBD(registroFirebase);
-                        }
-                        else {
-                            download(registroFirebase.caption[index].urlCloud, _pathCaption)
-                            .then(() => {
-                                console.log("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + index);
-
-                                insertInBD(registroFirebase);
-                            });
-                        }
-                    });
-                } else {
-                    insertInBD(registroFirebase);
+        // Descargamos la publicidad
+        if(registroFirebase.advertising) {
+            // Videos
+            if(registroFirebase.advertising.video) {
+                for(var i in registroFirebase.advertising.video) {
+                    await download(registroFirebase.advertising.video[i].urlCloud, _pathAdvertising)
+                    .then(console.log("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i))
                 }
-            });
-        });
+            }
+            // Imagenes
+            if(registroFirebase.advertising.image) {
+                for(var i in registroFirebase.advertising.image) {
+                    await download(registroFirebase.advertising.image[i].urlCloud, _pathAdvertising)
+                    .then(console.log("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i))
+                }
+            }
+        }
+
+        // Descargamos los subtitulos
+        if(registroFirebase.caption) {
+            for(var i in registroFirebase.caption.cap) {
+                await download(registroFirebase.caption.cap[i].urlCloud, _pathCaption)
+                .then(console.log("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i))
+            }
+        }
+        insertInBD(registroFirebase);
     } catch(err) {
+        _downloadingFile = false;
         return console.error("Se produjo un error inesperado en syncInsert: " + err);
     }
 }
@@ -311,15 +313,40 @@ function parserToInsert(value) {
         version: value.metadata.version
     };
 
-    for (var i in value.caption) {
-        video.caption.push({
-            label: value.caption[i].label,
-            languaje: value.caption[i].languaje,
-            src: value.caption[i].src,
-            urlBase: value.caption[i].urlBase,
-            kind: value.caption[i].kind,
-            default: value.caption[i].default
-        });
+    if(value.caption) {
+        for (var i in value.caption.cap) {
+            video.caption.cap.push({
+                label: value.caption.cap[i].label,
+                url: value.caption.cap[i].url,
+                urlBase: value.caption.cap[i].urlBase
+            });
+        }
+        video.caption.default = value.caption.default;
+    }
+   
+    if(value.advertising) {
+        if(value.advertising.video) {
+            for(var i in value.advertising.video) {
+                video.advertising.video.push({
+                    start: value.advertising.video[i].start,
+                    hold: value.advertising.video[i].hold,
+                    url: value.advertising.video[i].url,
+                    urlBase: value.advertising.video[i].urlBase
+                });
+            }
+        }
+
+        if(value.advertising.image) {
+            for(var i in value.advertising.image) {
+                video.advertising.image.push({
+                    start: value.advertising.image[i].start,
+                    end: value.advertising.image[i].end,
+                    hold: value.advertising.image[i].hold,
+                    url: value.advertising.image[i].url,
+                    urlBase: value.advertising.image[i].urlBase
+                });
+            }
+        }
     }
 
     return video;
