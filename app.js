@@ -11,8 +11,6 @@ var _downloadingFile = false;
 var _pathCaption = './';
 var _pathImage = './';
 var _pathVideo = './';
-var _pathAdvertising = './';
-var _indexSync = 0;
 
 // Configuracion de Firebase
 var config = {
@@ -67,6 +65,7 @@ app.get('/syncToBase', function (req, res, next) {
     });
 });
 
+// Sincroniza con firebase
 async function syncToCloud() {
     try {
         // Obtenemos el json de videos desde Firebase
@@ -150,7 +149,7 @@ async function syncDelete(registrosFirebase) {
                     var adsVideo = registrosBd[i].advertising.video[x].url;
                     if (adsVideo) {
                         adsVideo = adsVideo.substring(adsVideo.lastIndexOf("/") + 1, adsVideo.lenght);
-                        await deleteFile(_pathAdvertising + adsVideo);
+                        await deleteFile(_pathVideo + adsVideo);
                     }
                 }
 
@@ -159,7 +158,7 @@ async function syncDelete(registrosFirebase) {
                     var adsImage = registrosBd[i].advertising.image[x].url;
                     if (adsImage) {
                         adsImage = adsImage.substring(adsImage.lastIndexOf("/") + 1, adsImage.lenght);
-                        await deleteFile(_pathAdvertising + adsImage);
+                        await deleteFile(_pathImage + adsImage);
                     }
                 }
             }
@@ -189,14 +188,14 @@ async function syncInsert(registroFirebase) {
         // Videos
         if(registroFirebase.advertising.video) {
             for(var i in registroFirebase.advertising.video) {
-                await download(registroFirebase.advertising.video[i].urlCloud, _pathAdvertising)
+                await download(registroFirebase.advertising.video[i].urlCloud, _pathVideo)
                 console.log("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
             }
         }
         // Imagenes
         if(registroFirebase.advertising.image) {
             for(var i in registroFirebase.advertising.image) {
-                await download(registroFirebase.advertising.image[i].urlCloud, _pathAdvertising)
+                await download(registroFirebase.advertising.image[i].urlCloud, _pathImage)
                 console.log("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
             }
         }
