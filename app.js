@@ -6,6 +6,7 @@ var CronJob = require('cron').CronJob;
 var mongoose = require('mongoose');
 var firebase = require('firebase');
 var Video = require('./models/videos');
+var logger = require('./utils/logger');
 
 var _downloadingFile = false;
 var _pathCaption = './';
@@ -35,12 +36,12 @@ app.use(function (req, res, next) {
 mongoose.Promise = global.Promise;
 mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: true })
     .then(() => {
-        console.log("Mongoo DB conectada correctamente");
-        app.listen(3000, () => console.log("Api REST running on http://localhost:3000"));
+        logger.info("Mongoo DB conectada correctamente");
+        app.listen(3000, () => logger.info("Api REST running on http://localhost:3000"));
 
         //Se ejecuta cada 5min
         var jobUpdate = new CronJob({
-            cronTime: '* 5 * * * *',
+            cronTime: '*/1 * * * *',
             onTick: function () {
                 if (!_downloadingFile) {
                     _downloadingFile = true;
@@ -52,7 +53,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         });
     })
     .catch((err) => {
-        if (err) console.error("Error al conectarse a la bd: " + err);
+        if (err) logger.error("Error al conectarse a la bd: " + err);
     });
 
 // Permite obtener a los colectivos la lista de videos 
@@ -96,7 +97,7 @@ async function syncToCloud() {
     }
     catch(err) {
         _downloadingFile = false;
-        return console.error("Se produjo un error inesperado: " + err);
+        return logger.error("Se produjo un error inesperado: " + err);
     }
 }
 
@@ -117,12 +118,12 @@ async function syncDelete(registrosFirebase) {
         // Si no esta en firebase lo eliminamos
         if (!keep) {
             
-            console.log("-------------------------");
-            console.log("Inicio de eliminacion del registro id: " + registrosBd[i].id);
+            logger.info("-------------------------");
+            logger.info("Inicio de eliminacion del registro id: " + registrosBd[i].id);
 
             // Primero borramos de la bd el registro
             await Video.findOneAndRemove({ id: registrosBd[i].id }).exec();
-            console.log("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
+            logger.info("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
 
             // Borramos la imagen
             var imageDelete = registrosBd[i].image.url;
@@ -169,20 +170,20 @@ async function syncDelete(registrosFirebase) {
 
 async function deleteFile(path) {
     await fs.unlink(path, ()=>{});
-    console.log("Archivo eliminado: " + path);
+    logger.info("Archivo eliminado: " + path);
 }
 
 async function syncInsert(registroFirebase) {
-    console.log("-------------------------");
-    console.log("Inicio de descarga del registro id: " + registroFirebase.id);
+    logger.info("-------------------------");
+    logger.info("Inicio de descarga del registro id: " + registroFirebase.id);
 
     // Primero descargamos el video 
     await download(registroFirebase.video.urlCloud, _pathVideo)
-    console.log("Finalizo la descarga del video id: " + registroFirebase.id)
+    logger.info("Finalizo la descarga del video id: " + registroFirebase.id)
 
     // Descargamos la imagen
     await download(registroFirebase.image.urlCloud, _pathImage)
-    console.log("Finalizo la descarga de la imagen id: " + registroFirebase.id)
+    logger.info("Finalizo la descarga de la imagen id: " + registroFirebase.id)
 
     // Descargamos la publicidad
     if(registroFirebase.advertising) {
@@ -190,14 +191,14 @@ async function syncInsert(registroFirebase) {
         if(registroFirebase.advertising.video) {
             for(var i in registroFirebase.advertising.video) {
                 await download(registroFirebase.advertising.video[i].urlCloud, _pathVideo)
-                console.log("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
+                logger.info("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
             }
         }
         // Imagenes
         if(registroFirebase.advertising.image) {
             for(var i in registroFirebase.advertising.image) {
                 await download(registroFirebase.advertising.image[i].urlCloud, _pathImage)
-                console.log("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
+                logger.info("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
             }
         }
     }
@@ -206,31 +207,31 @@ async function syncInsert(registroFirebase) {
     if(registroFirebase.caption) {
         for(var i in registroFirebase.caption.cap) {
             await download(registroFirebase.caption.cap[i].urlCloud, _pathCaption)
-            console.log("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i)
+            logger.info("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i)
         }
     }
 
     // Insertamos el registro en la bd
     var video = parserToInsert(registroFirebase);
     await video.save();
-    console.log("Finalizo la descarga y se inserto el video id: " + video.id);
+    logger.info("Finalizo la descarga y se inserto el video id: " + video.id);
 }
 
 async function syncUpdate(registroBdVersion, registroFirebase) {
-    console.log("-------------------------");
-    console.log("Inicio de actualizacion del registro id: " + registroFirebase.id);
+    logger.info("-------------------------");
+    logger.info("Inicio de actualizacion del registro id: " + registroFirebase.id);
 
     if (registroBdVersion != registroFirebase.metadata.version) {
 
         // Parseamos el objecto para actualizarlo
         var videoParsed = parserToUpdate(registroFirebase);
 
-        //console.log(JSON.stringify(videoParsed))
+        //logger.info(JSON.stringify(videoParsed))
         await Video.update({ id: registroFirebase.id }, videoParsed).exec()
-        console.log("Finalizo la actualizacion del registro id " + registroFirebase.id + " en la bd");
+        logger.info("Finalizo la actualizacion del registro id " + registroFirebase.id + " en la bd");
     }
     else {
-        console.log("No fue necesaria la actualizacion del registro id " + registroFirebase.id + " en la bd");  
+        logger.info("No fue necesaria la actualizacion del registro id " + registroFirebase.id + " en la bd");  
     }
 }
 

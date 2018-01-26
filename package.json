@@ -13,6 +13,7 @@
     "firebase": "^4.8.2",
     "mongoose": "^4.13.9",
     "pi-wifi": "^1.2.0",
-    "request": "^2.83.0"
+    "request": "^2.83.0",
+    "winston": "^2.4.0"
   }
 }
