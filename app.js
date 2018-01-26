@@ -40,7 +40,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 
         //Se ejecuta cada 5min
         var jobUpdate = new CronJob({
-            cronTime: '* 15 * * * *',
+            cronTime: '* 5 * * * *',
             onTick: function () {
                 if (!_downloadingFile) {
                     _downloadingFile = true;
@@ -92,6 +92,7 @@ async function syncToCloud() {
                 await syncInsert(videosFirebase[i]);
             }
         }
+		_downloadingFile = false;
     }
     catch(err) {
         _downloadingFile = false;
