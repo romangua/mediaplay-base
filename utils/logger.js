@@ -7,7 +7,7 @@ var logger = new winston.Logger({
             filename: '/home/vault/app/mediaplay-base/all-logs.log',
             handleExceptions: true,
             json: false,
-            colorize: true,
+            colorize: false,
             timestamp: function () {
                 return new Date() 
               }
