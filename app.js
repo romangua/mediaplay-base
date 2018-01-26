@@ -41,7 +41,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
 
         //Se ejecuta cada 5min
         var jobUpdate = new CronJob({
-            cronTime: '*/1 * * * *',
+            cronTime: '*/5 * * * *',
             onTick: function () {
                 if (!_downloadingFile) {
                     _downloadingFile = true;
@@ -117,10 +117,7 @@ async function syncDelete(registrosFirebase) {
 
         // Si no esta en firebase lo eliminamos
         if (!keep) {
-            
-            logger.info("-------------------------");
-            logger.info("Inicio de eliminacion del registro id: " + registrosBd[i].id);
-
+           
             // Primero borramos de la bd el registro
             await Video.findOneAndRemove({ id: registrosBd[i].id }).exec();
             logger.info("El registro id " + registrosBd[i].id + " fue eliminado de la bd");
@@ -174,16 +171,14 @@ async function deleteFile(path) {
 }
 
 async function syncInsert(registroFirebase) {
-    logger.info("-------------------------");
-    logger.info("Inicio de descarga del registro id: " + registroFirebase.id);
 
     // Primero descargamos el video 
     await download(registroFirebase.video.urlCloud, _pathVideo)
-    logger.info("Finalizo la descarga del video id: " + registroFirebase.id)
+    //logger.info("Finalizo la descarga del video id: " + registroFirebase.id)
 
     // Descargamos la imagen
     await download(registroFirebase.image.urlCloud, _pathImage)
-    logger.info("Finalizo la descarga de la imagen id: " + registroFirebase.id)
+    //logger.info("Finalizo la descarga de la imagen id: " + registroFirebase.id)
 
     // Descargamos la publicidad
     if(registroFirebase.advertising) {
@@ -191,14 +186,14 @@ async function syncInsert(registroFirebase) {
         if(registroFirebase.advertising.video) {
             for(var i in registroFirebase.advertising.video) {
                 await download(registroFirebase.advertising.video[i].urlCloud, _pathVideo)
-                logger.info("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
+                //logger.info("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
             }
         }
         // Imagenes
         if(registroFirebase.advertising.image) {
             for(var i in registroFirebase.advertising.image) {
                 await download(registroFirebase.advertising.image[i].urlCloud, _pathImage)
-                logger.info("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
+                //logger.info("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
             }
         }
     }
@@ -207,7 +202,7 @@ async function syncInsert(registroFirebase) {
     if(registroFirebase.caption) {
         for(var i in registroFirebase.caption.cap) {
             await download(registroFirebase.caption.cap[i].urlCloud, _pathCaption)
-            logger.info("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i)
+            //logger.info("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i)
         }
     }
 
@@ -218,8 +213,6 @@ async function syncInsert(registroFirebase) {
 }
 
 async function syncUpdate(registroBdVersion, registroFirebase) {
-    logger.info("-------------------------");
-    logger.info("Inicio de actualizacion del registro id: " + registroFirebase.id);
 
     if (registroBdVersion != registroFirebase.metadata.version) {
 

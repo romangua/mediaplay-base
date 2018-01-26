@@ -9,7 +9,7 @@ var logger = new winston.Logger({
             json: false,
             colorize: false,
             timestamp: function () {
-                return new Date() 
+                return new Date().toLocaleString() 
               }
         }),
         new winston.transports.Console({
@@ -18,7 +18,7 @@ var logger = new winston.Logger({
             json: false,
             colorize: true,
             timestamp: function () {
-                return new Date() 
+                return new Date().toLocaleString()  
             }
         })
     ],
