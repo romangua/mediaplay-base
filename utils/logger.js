@@ -4,16 +4,22 @@ winston.emitErrs = true;
 var logger = new winston.Logger({
     transports: [
         new winston.transports.File({
-            filename: './all-logs.log',
+            filename: '/home/vault/app/mediaplay-base/all-logs.log',
             handleExceptions: true,
-            json: true,
-            colorize: false
+            json: false,
+            colorize: true,
+            timestamp: function () {
+                return new Date() 
+              }
         }),
         new winston.transports.Console({
             level: 'debug',
             handleExceptions: true,
             json: false,
-            colorize: true
+            colorize: true,
+            timestamp: function () {
+                return new Date() 
+            }
         })
     ],
     exitOnError: false
