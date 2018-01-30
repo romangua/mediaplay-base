@@ -4,4 +4,4 @@ package-lock.json
 *.jpg
 *.srt
 *.png
-all-logs.log
+all-logs.logs
