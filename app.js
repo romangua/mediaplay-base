@@ -42,7 +42,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         var jobUpdate = new CronJob({
             cronTime: '*/5 * * * *',
             onTick: function () {
-                cosole.log("Entro cron: " + "DownloadingFile: " + _downloadingFile);
+                console.log("Entro cron: " + "DownloadingFile: " + _downloadingFile);
                 if (!_downloadingFile) {
                     _downloadingFile = true;
                     syncToCloud();
