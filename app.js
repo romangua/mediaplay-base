@@ -69,6 +69,9 @@ app.get('/syncToBase', function (req, res, next) {
 // Sincroniza con firebase
 async function syncToCloud() {
     try {
+
+		console.log("--------Inicio la sincronizacion-------");	
+
         // Obtenemos el json de videos desde Firebase
         var response = await firebase.database().ref('/videos').once('value');
         var videosFirebase = [];
@@ -93,6 +96,7 @@ async function syncToCloud() {
                 await syncInsert(videosFirebase[i]);
             }
         }
+		console.log("--------Finalizo la sincronizacion-------");	
 		_downloadingFile = false;
     }
     catch(err) {
@@ -174,11 +178,11 @@ async function syncInsert(registroFirebase) {
 
     // Primero descargamos el video 
     await download(registroFirebase.video.urlCloud, _pathVideo)
-    //console.log("Finalizo la descarga del video id: " + registroFirebase.id)
+    console.log("Finalizo la descarga del video id: " + registroFirebase.id)
 
     // Descargamos la imagen
     await download(registroFirebase.image.urlCloud, _pathImage)
-    //console.log("Finalizo la descarga de la imagen id: " + registroFirebase.id)
+    console.log("Finalizo la descarga de la imagen id: " + registroFirebase.id)
 
     // Descargamos la publicidad
     if(registroFirebase.advertising) {
@@ -186,14 +190,14 @@ async function syncInsert(registroFirebase) {
         if(registroFirebase.advertising.video) {
             for(var i in registroFirebase.advertising.video) {
                 await download(registroFirebase.advertising.video[i].urlCloud, _pathVideo)
-                //console.log("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
+                console.log("Finalizo la descarga del ads video id: " + registroFirebase.id + " index: " + i)
             }
         }
         // Imagenes
         if(registroFirebase.advertising.image) {
             for(var i in registroFirebase.advertising.image) {
                 await download(registroFirebase.advertising.image[i].urlCloud, _pathImage)
-                //console.log("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
+                console.log("Finalizo la descarga del ads image id: " + registroFirebase.id + " index: " + i)
             }
         }
     }
@@ -202,7 +206,7 @@ async function syncInsert(registroFirebase) {
     if(registroFirebase.caption) {
         for(var i in registroFirebase.caption.cap) {
             await download(registroFirebase.caption.cap[i].urlCloud, _pathCaption)
-            //console.log("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i)
+            console.log("Finalizo la descarga del subtitulo id: " + registroFirebase.id + " index: " + i)
         }
     }
 
