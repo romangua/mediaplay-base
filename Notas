@@ -1,0 +1,56 @@
+
+Constraseña VaultInternal: 10042017
+
+Reiniciar node: 
+
+1) sudo pkill -f node
+
+##################################
+sudo apt-get install mongodb
+sudo service mongodb start 
+##################################
+Agregar las linea (se ejecuta al iniciar la raspberry)
+en sudo nano /etc/rc.local
+ip route del default
+##################################
+Autoiniciar la app
+
+chmod +x ./app.js
+sudo npm install -g pm2
+pm2 start 0 --log-date-format "YYYY-MM-DD HH:mm"
+pm2 startup systemd
+Ejecutar el comando q imprime
+
+pm2 list
+pm2 start 0 --log-date-format "YYYY-MM-DD HH:mm"
+pm2 stop app
+pm2 restart app
+pm2 info app
+pm2 log --lines 1000
+##################################
+
+Actualizar a Node7
+
+curl -sL https://deb.nodesource.com/setup_9.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+#################################
+Firefox:
+
+sudo apt-get purge firefox
+
+desactivar las actualizaciones
+/vault/.mozilla/firefox/7mzjiqxn.default/prefs.js/ 
+o por navegador en about:config
+user_pref("app.update.enabled", false);
+user_pref("app.update.auto", false);
+user_pref("app.update.silent", false);
+
+sudo apt-get install firefox=45.0.2+build1-0ubuntu1
+##################################
+Configurar red:
+
+Setear RUN="no" en este script
+sudo nano /etc/dhcp/dhclient-exit-hooks.d/rfc3442-classless-routes 
+--------------
+##################################
