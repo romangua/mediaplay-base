@@ -6,11 +6,13 @@ var CronJob = require('cron').CronJob;
 var mongoose = require('mongoose');
 var firebase = require('firebase');
 var Video = require('./models/videos');
+var Wireless = require('wireless');
 
 var _downloadingFile = false;
 var _pathCaption = './';
 var _pathImage = './';
 var _pathVideo = './';
+var _wifiSsid = 'Vault Internal';
 
 // Configuracion de Firebase
 var config = {
@@ -22,6 +24,63 @@ var config = {
     messagingSenderId: "1009870121712"
 };
 firebase.initializeApp(config);
+
+var wireless = new Wireless({
+    iface: 'en0'/*,
+	updateFrequency: 10, // Optional, seconds to scan for networks
+	connectionSpyFrequency: 2, // Optional, seconds to scan if connected
+	vanishThreshold: 2 // Optional, how many scans before network considered gone*/
+});
+
+wireless.enable(function(err) {
+	wireless.start();
+});
+
+// A network disappeared (after the specified threshold)
+wireless.on('vanish', function(network) {
+    console.log("[  VANISH] " + network.ssid + " [" + network.address + "] ");
+});
+
+// A wireless network changed something about itself
+wireless.on('change', function(network) {
+    console.log("[  CHANGE] " + network.ssid);
+});
+
+wireless.on('signal', function(network) {
+    console.log("[  SIGNAL] " + network.ssid);
+});
+
+// We've joined a network
+wireless.on('join', function(network) {
+    console.log("[    JOIN] " + network.ssid + " [" + network.address + "] ");
+});
+
+// You were already connected, so it's not technically a join event...
+wireless.on('former', function(address) {
+    console.log("[OLD JOIN] " + address);
+});
+
+// We've left a network
+wireless.on('leave', function() {
+    console.log("[   LEAVE] Left the network");
+});
+
+// Just for debugging purposes
+wireless.on('command', function(command) {
+    console.log("[ COMMAND] " + command);
+});
+
+wireless.on('dhcp', function(ip_address) {
+    console.log("[    DHCP] Leased IP " + ip_address);
+});
+
+wireless.on('empty', function() {
+    console.log("[   EMPTY] Found no networks this scan");
+});
+
+wireless.on('error', function(message) {
+    console.log("[   ERROR] " + message);
+});
 
 // Inicializacion de Express
 var app = express();
@@ -43,7 +102,6 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
             cronTime: '*/5 * * * *',
             onTick: function () {
                 if (!_downloadingFile) {
-                    _downloadingFile = true;
                     syncToCloud();
                 }
             },
@@ -55,23 +113,15 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         if (err) console.error("Error al conectarse a la bd: " + err);
     });
 
-// Permite obtener a los colectivos la lista de videos 
-// que posee la base en su BD
-app.get('/syncToBase', function (req, res, next) {
-    Video.find({}, (err, videos) => {
-        if (err) return res.status(500).send({ message: "Error al obtener los videos: " + err });
-
-        res.status(200).send(videos);
-    });
-});
-
 // Sincroniza con firebase
 async function syncToCloud() {
     try {
-		console.log("--------Inicio la sincronizacion-------");	
+        _downloadingFile = true;
+        console.log("--------Inicio la sincronizacion-------");	
 
         // Obtenemos el json de videos desde Firebase
-        var response =  firebase.database().ref('/videos').once('value').catch(error => {console.log(error)});
+        var response =  await firebase.database().ref('/videos').once('value');
+
         var videosFirebase = [];
         response.forEach(function(doc) {
             videosFirebase.push(doc.val());
@@ -99,8 +149,7 @@ async function syncToCloud() {
         console.error("Se produjo un error inesperado: " + err);
     }
 	finally {
-		console.log("--------Finalizo la sincronizacion-------");	
-		_downloadingFile = false;
+		syncToBaseEnd();
 	}
 }
 
@@ -174,7 +223,6 @@ async function deleteFile(path) {
 }
 
 async function syncInsert(registroFirebase) {
-
     // Primero descargamos el video 
     await download(registroFirebase.video.urlCloud, _pathVideo)
     console.log("Finalizo la descarga del video id: " + registroFirebase.id)
@@ -229,6 +277,11 @@ async function syncUpdate(registroBdVersion, registroFirebase) {
     else {
         console.log("No fue necesaria la actualizacion del registro id " + registroFirebase.id + " en la bd");  
     }
+}
+
+function syncToBaseEnd() {
+    console.log("--------Finalizo la sincronizacion-------");	
+	_downloadingFile = false;
 }
 
 function parserToInsert(value) {
@@ -311,11 +364,14 @@ function parserToUpdate(value) {
     return video;
 }
 
-// Permite obtener la lista de videos desde la BD
-app.get('/test', function (req, res, next) {
-    _downloadingFile = true;
-    res.status(200).send("Empezo la sincronizacion");
-    syncToCloud();
+// Permite obtener a los colectivos la lista de videos 
+// que posee la base en su BD
+app.get('/syncToBase', function (req, res, next) {
+    Video.find({}, (err, videos) => {
+        if (err) return res.status(500).send({ message: "Error al obtener los videos: " + err });
+
+        res.status(200).send(videos);
+    });
 });
 
 app.get('/delete', function (req, res, next) {
