@@ -42,7 +42,6 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         var jobUpdate = new CronJob({
             cronTime: '*/5 * * * *',
             onTick: function () {
-                console.log("Entro cron: " + "DownloadingFile: " + _downloadingFile);
                 if (!_downloadingFile) {
                     _downloadingFile = true;
                     syncToCloud();
@@ -69,11 +68,10 @@ app.get('/syncToBase', function (req, res, next) {
 // Sincroniza con firebase
 async function syncToCloud() {
     try {
-
 		console.log("--------Inicio la sincronizacion-------");	
 
         // Obtenemos el json de videos desde Firebase
-        var response = await firebase.database().ref('/videos').once('value');
+        var response =  firebase.database().ref('/videos').once('value').catch(error => {console.log(error)});
         var videosFirebase = [];
         response.forEach(function(doc) {
             videosFirebase.push(doc.val());
@@ -96,13 +94,14 @@ async function syncToCloud() {
                 await syncInsert(videosFirebase[i]);
             }
         }
-		console.log("--------Finalizo la sincronizacion-------");	
-		_downloadingFile = false;
     }
     catch(err) {
-        _downloadingFile = false;
-        return console.error("Se produjo un error inesperado: " + err);
+        console.error("Se produjo un error inesperado: " + err);
     }
+	finally {
+		console.log("--------Finalizo la sincronizacion-------");	
+		_downloadingFile = false;
+	}
 }
 
 async function syncDelete(registrosFirebase) {
