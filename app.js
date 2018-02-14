@@ -7,12 +7,16 @@ var mongoose = require('mongoose');
 var firebase = require('firebase');
 var Video = require('./models/videos');
 var Wireless = require('wireless');
+var exec = require('child_process').exec, child;
 
 var _downloadingFile = false;
 var _pathCaption = './';
 var _pathImage = './';
 var _pathVideo = './';
 var _wifiSsid = 'Vault Internal';
+var _wifiPassword = '10042017';
+var _isNetworkConnected = false;
+var _isNetworkConnecting = false;
 
 // Configuracion de Firebase
 var config = {
@@ -25,61 +29,62 @@ var config = {
 };
 firebase.initializeApp(config);
 
+// Cuando se detiene el node se ejecuta este evento 
+// que detiene la funcion de analisar el wifi
+process.on('SIGINT', function() {
+	wireless.stop();
+});
+
+// Inicializo la lib wirelles
 var wireless = new Wireless({
-    iface: 'en0'/*,
+    iface: 'wlan0',
 	updateFrequency: 10, // Optional, seconds to scan for networks
 	connectionSpyFrequency: 2, // Optional, seconds to scan if connected
-	vanishThreshold: 2 // Optional, how many scans before network considered gone*/
+	vanishThreshold: 2 // Optional, how many scans before network considered gone
 });
 
 wireless.enable(function(err) {
+	if(err)
+		return console.error('[FAILURE] Unable to enable wireless card');
+		
 	wireless.start();
 });
 
-// A network disappeared (after the specified threshold)
-wireless.on('vanish', function(network) {
-    console.log("[  VANISH] " + network.ssid + " [" + network.address + "] ");
-});
-
-// A wireless network changed something about itself
-wireless.on('change', function(network) {
-    console.log("[  CHANGE] " + network.ssid);
-});
-
-wireless.on('signal', function(network) {
-    console.log("[  SIGNAL] " + network.ssid);
-});
-
-// We've joined a network
+// Se conecta a un red wifi
 wireless.on('join', function(network) {
-    console.log("[    JOIN] " + network.ssid + " [" + network.address + "] ");
+    console.log("[JOIN NETWORK] " + network.ssid);	
+    _isNetworkConnected = true;
 });
 
-// You were already connected, so it's not technically a join event...
-wireless.on('former', function(address) {
-    console.log("[OLD JOIN] " + address);
+wireless.on('signal', function(network) {	
+ 	if(network.ssid == _wifiSsid && !_isNetworkConnected  && !_isNetworkConnecting) {
+        _isNetworkConnecting = true;
+        
+        // Conecto la wifi
+        child = exec("sudo nmcli device wifi connect '" + _wifiSsid + "' password '" + _wifiPassword + "'", function(err, stdout, stderr) {		       
+		  if (err) {
+			console.error("Error al intentan conectarse a la red " + _wifiSsid + ": " + err);
+		  }   		
+		  _isNetworkConnecting = false;	
+		});
+	}
 });
 
-// We've left a network
+// Se desconecta de la red wifi
+// Si se estaba realizando una descarga, reinicia el node
 wireless.on('leave', function() {
-    console.log("[   LEAVE] Left the network");
-});
+    console.log("[LEAVE NETWORK] Left the network");
+	if(_downloadingFile) {
+   		child = exec('pm2 restart 1');
+	}
+	_isNetworkConnected = false; 
+	_isNetworkConnecting = false;	
+	
+});	
 
-// Just for debugging purposes
-wireless.on('command', function(command) {
-    console.log("[ COMMAND] " + command);
-});
-
-wireless.on('dhcp', function(ip_address) {
-    console.log("[    DHCP] Leased IP " + ip_address);
-});
-
-wireless.on('empty', function() {
-    console.log("[   EMPTY] Found no networks this scan");
-});
-
+// Indica un error
 wireless.on('error', function(message) {
-    console.log("[   ERROR] " + message);
+    console.log("[ERROR NETWORK] " + message);
 });
 
 // Inicializacion de Express
@@ -101,7 +106,7 @@ mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: tru
         var jobUpdate = new CronJob({
             cronTime: '*/5 * * * *',
             onTick: function () {
-                if (!_downloadingFile) {
+                if (!_downloadingFile && _isNetworkConnected) {
                     syncToCloud();
                 }
             },
