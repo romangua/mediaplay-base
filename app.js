@@ -53,7 +53,9 @@ wireless.enable(function(err) {
 // Se conecta a un red wifi
 wireless.on('join', function(network) {
     console.log("[JOIN NETWORK] " + network.ssid);	
-    _isNetworkConnected = true;
+     if(network.ssid == _wifiSsid) {
+		_isNetworkConnected = true;
+	}
 });
 
 wireless.on('signal', function(network) {	
