@@ -47,6 +47,17 @@ wireless.enable(function(err) {
 	if(err)
 		return console.error('[FAILURE] Unable to enable wireless card');
 		
+	// Veo si ya estamos conectado a la wifi
+	child = exec("iwgetid -r", function(err, stdout, stderr) {		       
+	  if (err) {
+		console.error("error al verificar el nombre de a red " + _wifiSsid + ": " + err);
+	  } 
+	  if(stdout != null && stdout.trim() == _wifiSsid) {
+		 console.log("Ya se encuentra conectado a la red: " + _wifiSsid);
+		_isNetworkConnected = true;
+	  }
+	});
+		
 	wireless.start();
 });
 
