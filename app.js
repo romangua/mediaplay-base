@@ -94,9 +94,9 @@ wireless.on('leave', function() {
     console.log("[LEAVE NETWORK] Left the network");
 	if(_downloadingFile) {
    		child = exec('pm2 restart 0');
-   		_isNetworkConnected = false; 
-		_isNetworkConnecting = false;	
 	}	
+	_isNetworkConnected = false; 
+	_isNetworkConnecting = false;	
 });	
 
 // Indica un error
