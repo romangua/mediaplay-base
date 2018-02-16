@@ -15,6 +15,7 @@ var _pathImage = './';
 var _pathVideo = './';
 var _wifiSsid = 'Vault Internal';
 var _wifiPassword = '10042017';
+var _gatewayEth0 = '192.168.1.1';
 var _isNetworkConnected = false;
 var _isNetworkConnecting = false;
 
@@ -48,9 +49,9 @@ wireless.enable(function(err) {
 		return console.error('[FAILURE] Unable to enable wireless card');
 		
 	// Veo si ya estamos conectado a la wifi
-	child = exec("iwgetid -r", function(err, stdout, stderr) {		       
+	child = exec("sudo iwgetid -r", function(err, stdout, stderr) {		       
 	  if (err) {
-		console.error("error al verificar el nombre de a red " + _wifiSsid + ": " + err);
+		console.error("Error al verificar el nombre de a red " + _wifiSsid + ": " + err);
 	  } 
 	  if(stdout != null && stdout.trim() == _wifiSsid) {
 		 console.log("Ya se encuentra conectado a la red: " + _wifiSsid);
@@ -80,7 +81,11 @@ wireless.on('signal', function(network) {
 		  }   		
 		  _isNetworkConnecting = false;	
 		});
-	}
+		
+		// Elimino el gateway de la lan
+        child = exec("sudo route del default gw " + _gatewayEth0, function(err, stdout, stderr) {				
+		});
+	}	
 });
 
 // Se desconecta de la red wifi
@@ -88,11 +93,10 @@ wireless.on('signal', function(network) {
 wireless.on('leave', function() {
     console.log("[LEAVE NETWORK] Left the network");
 	if(_downloadingFile) {
-   		child = exec('pm2 restart 1');
-	}
-	_isNetworkConnected = false; 
-	_isNetworkConnecting = false;	
-	
+   		child = exec('pm2 restart 0');
+   		_isNetworkConnected = false; 
+		_isNetworkConnecting = false;	
+	}	
 });	
 
 // Indica un error
@@ -110,7 +114,7 @@ app.use(function (req, res, next) {
 
 // Conexion a la BD y a NodeJs
 mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost:27017/MediaPlay_BD', { useMongoClient: true })
+mongoose.connect('mongodb://localhost:27017/MediaPlay_Base_BD', { useMongoClient: true })
     .then(() => {
         console.log("Mongoo DB conectada correctamente");
         app.listen(3000, () => console.log("Api REST running on http://localhost:3000"));
