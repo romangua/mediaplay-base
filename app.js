@@ -81,11 +81,11 @@ wireless.on('signal', function(network) {
 		  }   		
 		  _isNetworkConnecting = false;	
 		});
+	}
 		
-		// Elimino el gateway de la lan
-        child = exec("sudo route del default gw " + _gatewayEth0, function(err, stdout, stderr) {				
-		});
-	}	
+	// Elimino el gateway de la lan
+	child = exec("sudo route del default gw " + _gatewayEth0, function(err, stdout, stderr) {				
+	});	
 });
 
 // Se desconecta de la red wifi
